@@ -17,11 +17,11 @@ MVP NBA analytics dashboard that combines upcoming schedule, recent team/player 
 app/        # Streamlit UI + config
 etl/        # Data ingestion scripts and transforms
 db/         # DB schema and connection helpers
-scripts/    # Orchestration scripts
+scripts/    # Orchestration scripts + PowerShell runners
 tests/      # Minimal tests
 ```
 
-## Setup
+## Setup (macOS/Linux)
 1. Install dependencies:
    ```bash
    make setup
@@ -30,13 +30,31 @@ tests/      # Minimal tests
    ```bash
    cp .env.example .env
    ```
-   - Use SQLite fallback by default.
-   - To use Postgres, set `DB_BACKEND=postgres` and matching credentials.
+
+## Windows Setup (PowerShell)
+Use these exact commands for a repeatable setup:
+
+```powershell
+python -m venv .venv
+Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass
+.\.venv\Scripts\Activate.ps1
+$env:PYTHONPATH = "."
+pip install -r requirements.txt
+Copy-Item .env.example .env -ErrorAction SilentlyContinue
+docker compose up -d
+python scripts/init_db.py
+python scripts/run_etl.py
+python -m streamlit run app/main.py
+```
+
+Optional helper scripts:
+- `powershell -ExecutionPolicy Bypass -File scripts/run_etl.ps1`
+- `powershell -ExecutionPolicy Bypass -File scripts/run.ps1`
 
 ## Database
-- Start Postgres (optional):
+- Start Postgres:
   ```bash
-  docker compose up -d postgres
+  docker compose up -d
   ```
 - Initialize schema:
   ```bash
@@ -58,7 +76,7 @@ ETL scripts executed in order:
 
 ## Run App
 ```bash
-make run
+python -m streamlit run app/main.py
 ```
 Open `http://localhost:8501`.
 

@@ -13,7 +13,7 @@ etl:
 	$(PYTHON) scripts/run_etl.py
 
 run:
-	streamlit run app/app.py
+	python -m streamlit run app/main.py
 
 test:
 	pytest -q

@@ -1,17 +1,11 @@
 import logging
 import time
 from datetime import date, datetime, timedelta
-from typing import Iterable
 
 import pandas as pd
 import requests_cache
-from nba_api.stats.endpoints import (
-    commonallplayers,
-    commonteamroster,
-    leaguegamefinder,
-    leaguedashteamstats,
-    scoreboardv2,
-)
+from nba_api.stats.endpoints import commonteamroster, leaguegamefinder, scoreboardv2
+from nba_api.stats.static import teams as static_teams
 from sqlalchemy import text
 from tenacity import retry, stop_after_attempt, wait_exponential
 
@@ -55,13 +49,24 @@ def upsert_rows(table: str, rows: list[dict], conflict_cols: list[str]) -> None:
 
 
 def fetch_teams() -> pd.DataFrame:
-    df = pd.DataFrame(safe_call(leaguedashteamstats.LeagueDashTeamStats, season='2024-25').get_data_frames()[0])
-    return df[['TEAM_ID', 'TEAM_NAME', 'TEAM_ABBREVIATION']].drop_duplicates()
+    df = pd.DataFrame(static_teams.get_teams())
+    required = ['id', 'full_name', 'abbreviation']
+    missing = [col for col in required if col not in df.columns]
+    if missing:
+        raise ValueError(f'NBA static teams response missing columns: {missing}')
+    out = df[required].rename(columns={'id': 'TEAM_ID', 'full_name': 'TEAM_NAME', 'abbreviation': 'TEAM_ABBREVIATION'})
+    return out.drop_duplicates()
 
 
 def fetch_roster(team_id: int) -> pd.DataFrame:
     roster = safe_call(commonteamroster.CommonTeamRoster, team_id=team_id, season='2024-25').common_team_roster.get_data_frame()
+    if 'TEAM_ID' not in roster.columns:
+        roster['TEAM_ID'] = int(team_id)
+
     keep_cols = ['PLAYER_ID', 'PLAYER', 'TEAM_ID', 'POSITION', 'HEIGHT', 'WEIGHT']
+    missing = [col for col in keep_cols if col not in roster.columns]
+    if missing:
+        raise ValueError(f'Roster response missing columns for team {team_id}: {missing}')
     return roster[keep_cols]
 
 
